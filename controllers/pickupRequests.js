@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Provider = require('../models/Provider');
 const PickupRequest = require('../models/PickupRequest');
+const PickupLocation = require('../models/PickupLocation');
 const { canManage } = require('../middleware/auth');
 
 //@desc     Request a custom pick-up address for a booking { name, address, region? } (replaces a rejected one)
@@ -152,5 +153,54 @@ exports.getPickupRequests = async (req, res, next) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false, message: 'Cannot find pick-up requests' });
+  }
+};
+
+//@desc     Approve a pending request { addToList?: true } — addToList also saves it as a pick-up location
+//@route    PUT /api/v1/pickup-requests/:id/approve
+//@access   Private (provider owner, admin)                               req P3.8
+exports.approvePickupRequest = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid pick-up request id ${req.params.id}` });
+    }
+    const request = await PickupRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: `No pick-up request with the id of ${req.params.id}` });
+    }
+
+    //No :providerId in this URL, so check ownership through the request's provider
+    const provider = await Provider.findById(request.provider);
+    if (!canManage(provider, req.user)) {
+      return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to review this pick-up request` });
+    }
+    if (request.status !== 'pending') {
+      return res.status(409).json({ success: false, message: `Only a pending request can be approved (this one is ${request.status})` });
+    }
+
+    //addToList: create the location first, so if it fails the request stays pending
+    if (req.body.addToList === true) {
+      if (!provider.serviceRegions.includes(request.region)) {
+        return res.status(400).json({
+          success: false,
+          message: `To add it to the list, the request's region must be one of this provider's service regions: ${provider.serviceRegions.join(', ') || '(none yet)'}`,
+        });
+      }
+      if (await PickupLocation.exists({ provider: provider._id, name: request.name.trim() })) {
+        return res.status(409).json({ success: false, message: `This provider already has a pick-up location named ${request.name.trim()}` });
+      }
+      await PickupLocation.create({ provider: provider._id, name: request.name, address: request.address, region: request.region });
+    }
+
+    request.status = 'approved';
+    request.reviewedAt = new Date();
+    await request.save();
+
+    //The approved address replaces the booking's chosen location (location has priority otherwise)
+    await Booking.updateOne({ _id: request.booking }, { pickupLocation: null });
+
+    res.status(200).json({ success: true, data: request });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 };

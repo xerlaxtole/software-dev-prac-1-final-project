@@ -4,6 +4,7 @@ const {
   getPickupRequest,
   cancelPickupRequest,
   getPickupRequests,
+  approvePickupRequest,
 } = require('../controllers/pickupRequests');
 const { protect, authorize, loadProvider } = require('../middleware/auth');
 
@@ -13,6 +14,7 @@ const router = express.Router({ mergeParams: true });
 //Guards: run a route only under its own mount point, otherwise skip it (next('route')) → unknown paths fall through to 404
 const onBooking = (req, res, next) => (req.params.bookingId ? next() : next('route'));
 const onProvider = (req, res, next) => (req.params.providerId ? next() : next('route'));
+const standalone = (req, res, next) => (req.params.bookingId || req.params.providerId ? next('route') : next());
 
 //On a booking: /bookings/:bookingId/pickup-request                      req P3.6
 router
@@ -24,5 +26,8 @@ router
 
 //On a provider: /providers/:providerId/pickup-requests?status=          req P3.7
 router.get('/', onProvider, protect, authorize('admin', 'provider'), loadProvider(true), getPickupRequests);
+
+//Standalone: /pickup-requests/:id/approve|reject                         req P3.8
+router.put('/:id/approve', standalone, protect, authorize('admin', 'provider'), approvePickupRequest);
 
 module.exports = router;
