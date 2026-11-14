@@ -144,14 +144,64 @@ exports.updateBooking = async (req, res, next) => {
       return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to update this booking` });
     }
 
-    //Whitelist (gulper passed req.body straight through, which let a user reassign `user`)
+    const oldProvider = String(booking.provider);
+
+    if (req.body.car !== undefined && String(req.body.car) !== String(booking.car)) {
+      if (!mongoose.isValidObjectId(req.body.car)) {
+        return res.status(400).json({ success: false, message: 'Invalid car id' });
+      }
+      const car = await Car.findById(req.body.car);
+      if (!car) {
+        return res.status(404).json({ success: false, message: `No car with the id of ${req.body.car}` });
+      }
+      booking.car = car._id;
+      booking.provider = car.provider;
+    }
+
     for (const field of ['startDate', 'endDate', 'pickupLocation']) {
       if (req.body[field] !== undefined) booking[field] = req.body[field];
     }
-    // TODO (Person B): changing `car` — re-run overlap, re-copy provider, reconcile pickupLocation + pickupRequest
-    // TODO (Person B): re-run the overlap check when dates change
+
+    const start = new Date(booking.startDate);
+    const end = new Date(booking.endDate);
+    if (isNaN(start) || isNaN(end) || start > end) {
+      return res.status(400).json({ success: false, message: 'Invalid date range' });
+    }
+
+    if (booking.pickupLocation && booking.isModified(['pickupLocation', 'provider'])) {
+      if (!mongoose.isValidObjectId(booking.pickupLocation)) {
+        return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
+      }
+      const validLocation = await PickupLocation.exists({
+        _id: booking.pickupLocation,
+        provider: booking.provider,
+      });
+      if (!validLocation) {
+        return res.status(400).json({
+          success: false,
+          message: 'pickupLocation does not belong to this car\'s provider',
+        });
+      }
+    }
+
+    if (booking.isModified(['startDate', 'endDate', 'car'])) {
+      const conflict = await Booking.exists({
+        _id: { $ne: booking._id },
+        car: booking.car,
+        startDate: { $lt: end },
+        endDate: { $gt: start },
+      });
+      if (conflict) {
+        return res.status(409).json({ success: false, message: 'Car is already booked for these dates' });
+      }
+    }
 
     await booking.save(); //save() runs the endDate ≥ startDate validator
+
+    if (String(booking.provider) !== oldProvider) {
+      await PickupRequest.deleteOne({ booking: booking._id });
+    }
+
     res.status(200).json({ success: true, data: booking });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
