@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Provider = require('../models/Provider');
 const Region = require('../models/Region');
 const PickupLocation = require('../models/PickupLocation');
+const Booking = require('../models/Booking');
 const { canManage } = require('../middleware/auth');
 
 //@desc     List a provider's pick-up locations — ?region= filters by province
@@ -116,6 +117,38 @@ exports.updatePickupLocation = async (req, res, next) => {
 
     await location.save(); //runs required/trim validators, so an empty name/address is a 400
     res.status(200).json({ success: true, data: location });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+//@desc     Delete a pick-up location (409 while a current/upcoming booking uses it; past bookings fall back to null)
+//@route    DELETE /api/v1/pickup-locations/:id
+//@access   Private (provider owner, admin)
+exports.deletePickupLocation = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid pick-up location id ${req.params.id}` });
+    }
+
+    const location = await PickupLocation.findById(req.params.id);
+    if (!location || (req.params.providerId && location.provider.toString() !== req.params.providerId)) {
+      return res.status(404).json({ success: false, message: `No pick-up location with the id of ${req.params.id}` });
+    }
+
+    const provider = await Provider.findById(location.provider);
+    if (!canManage(provider, req.user)) {
+      return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to delete this pick-up location` });
+    }
+
+    if (await Booking.exists({ pickupLocation: location._id, endDate: { $gte: new Date() } })) {
+      return res.status(409).json({ success: false, message: 'This pick-up location is used by current or upcoming bookings' });
+    }
+
+    await Booking.updateMany({ pickupLocation: location._id }, { pickupLocation: null });
+    await location.deleteOne();
+
+    res.status(200).json({ success: true, data: {} });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
