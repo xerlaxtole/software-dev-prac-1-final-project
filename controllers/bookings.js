@@ -134,63 +134,65 @@ exports.updateBooking = async (req, res, next) => {
       return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to update this booking` });
     }
 
-    const oldProvider = String(booking.provider);
+    const body = req.body;
 
-    if (req.body.car !== undefined && String(req.body.car) !== String(booking.car)) {
-      if (!mongoose.isValidObjectId(req.body.car)) {
-        return res.status(400).json({ success: false, message: 'Invalid car id' });
-      }
-      const car = await Car.findById(req.body.car);
-      if (!car) {
-        return res.status(404).json({ success: false, message: `No car with the id of ${req.body.car}` });
-      }
-      booking.car = car._id;
-      booking.provider = car.provider;
-    }
-
-    for (const field of ['startDate', 'endDate', 'pickupLocation']) {
-      if (req.body[field] !== undefined) booking[field] = req.body[field];
-    }
-
-    const start = new Date(booking.startDate);
-    const end = new Date(booking.endDate);
+    const start = new Date(body.startDate ?? booking.startDate);
+    const end = new Date(body.endDate ?? booking.endDate);
     if (isNaN(start) || isNaN(end) || start > end) {
       return res.status(400).json({ success: false, message: 'Invalid date range' });
     }
 
-    if (booking.pickupLocation && booking.isModified(['pickupLocation', 'provider'])) {
-      if (!mongoose.isValidObjectId(booking.pickupLocation)) {
+    let car = null;
+    if (body.car !== undefined && String(body.car) !== String(booking.car)) {
+      if (!mongoose.isValidObjectId(body.car)) {
+        return res.status(400).json({ success: false, message: 'Invalid car id' });
+      }
+      car = await Car.findById(body.car);
+      if (!car) {
+        return res.status(404).json({ success: false, message: `No car with the id of ${body.car}` });
+      }
+    }
+    const carId = car ? car._id : booking.car;
+    const providerId = car ? car.provider : booking.provider;
+    const providerChanged = String(providerId) !== String(booking.provider);
+
+    let pickupLocation = booking.pickupLocation;
+    if (body.pickupLocation !== undefined) pickupLocation = body.pickupLocation || null;
+    else if (providerChanged) pickupLocation = null;
+    if (body.pickupLocation) {
+      if (!mongoose.isValidObjectId(body.pickupLocation)) {
         return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
       }
-      const validLocation = await PickupLocation.exists({
-        _id: booking.pickupLocation,
-        provider: booking.provider,
-      });
-      if (!validLocation) {
-        return res.status(400).json({
-          success: false,
-          message: 'pickupLocation does not belong to this car\'s provider',
-        });
+      if (!(await PickupLocation.exists({ _id: body.pickupLocation, provider: providerId }))) {
+        return res.status(400).json({ success: false, message: "pickupLocation does not belong to this car's provider" });
       }
     }
 
-    if (booking.isModified(['startDate', 'endDate', 'car'])) {
+    if (car || start.getTime() !== booking.startDate.getTime() || end.getTime() !== booking.endDate.getTime()) {
       const conflict = await Booking.exists({
         _id: { $ne: booking._id },
-        car: booking.car,
-        startDate: { $lt: end },
-        endDate: { $gt: start },
+        car: carId,
+        startDate: { $lte: end },
+        endDate: { $gte: start },
       });
       if (conflict) {
         return res.status(409).json({ success: false, message: 'Car is already booked for these dates' });
       }
     }
 
-    await booking.save(); //save() runs the endDate ≥ startDate validator
+    let request = null;
+    if (providerChanged) request = await PickupRequest.findOne({ booking: booking._id });
+    else if (body.pickupLocation) request = await PickupRequest.findOne({ booking: booking._id, status: 'pending' });
 
-    if (String(booking.provider) !== oldProvider) {
-      await PickupRequest.deleteOne({ booking: booking._id });
-    }
+    booking.car = carId;
+    booking.provider = providerId;
+    booking.startDate = start;
+    booking.endDate = end;
+    booking.pickupLocation = pickupLocation;
+    if (request) booking.pickupRequest = null;
+
+    await booking.save(); //save() runs the endDate ≥ startDate validator
+    if (request) await request.deleteOne(); //only after the booking update succeeded
 
     res.status(200).json({ success: true, data: booking });
   } catch (err) {

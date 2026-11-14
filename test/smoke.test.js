@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Car = require('../models/Car');
 const { authorize, canManage } = require('../middleware/auth');
-const { addBooking } = require('../controllers/bookings');
+const { addBooking, updateBooking } = require('../controllers/bookings');
+const PickupRequest = require('../models/PickupRequest');
 const Provider = require('../models/Provider');
 const PickupLocation = require('../models/PickupLocation');
 const { deleteMe } = require('../controllers/auth');
@@ -95,6 +96,78 @@ const mockRes = () => {
   await addBooking({ ...req, body: { ...req.body, pickupLocation: loc } }, res);
   assert.equal(res.code, 201);
   assert.equal(res.body.data.pickupLocation, loc);
+
+  //updateBooking(): real Booking doc with save() stubbed
+  const owner = id();
+  const oldProv = id();
+  const oldLoc = id();
+  const freshBooking = () => {
+    const b = new Booking({
+      user: owner, car: id(), provider: oldProv, pickupLocation: oldLoc, pickupRequest: id(),
+      startDate: '2026-12-20', endDate: '2026-12-23',
+    });
+    b.save = async () => b;
+    Booking.findById = async () => b;
+    return b;
+  };
+  const upd = (body, user = { role: 'user', id: owner.toString() }) => ({ params: { id: 'b1' }, user, body });
+  let dropped;
+  PickupRequest.findOne = async (q) => ({ q, deleteOne: async () => (dropped = q) });
+
+  //403 for someone else's booking · 400 reversed dates
+  freshBooking();
+  res = mockRes();
+  await updateBooking(upd({}, { role: 'user', id: id().toString() }), res);
+  assert.equal(res.code, 403);
+  res = mockRes();
+  await updateBooking(upd({ endDate: '2026-12-01' }), res);
+  assert.equal(res.code, 400);
+
+  //409 on overlap, inclusive and excluding itself
+  let b = freshBooking();
+  Booking.exists = async (q) => ((overlapQuery = q), { _id: id() });
+  res = mockRes();
+  await updateBooking(upd({ endDate: '2026-12-25' }), res);
+  assert.equal(res.code, 409);
+  assert.equal(overlapQuery._id.$ne, b._id);
+  assert.ok(overlapQuery.startDate.$lte && overlapQuery.endDate.$gte);
+  Booking.exists = async () => null;
+
+  //Changing car to another provider: provider re-copied, old location cleared, any request dropped
+  b = freshBooking();
+  const newProv = id();
+  Car.findById = async () => ({ _id: id(), provider: newProv });
+  dropped = null;
+  res = mockRes();
+  await updateBooking(upd({ car: id().toString() }), res);
+  assert.equal(res.code, 200);
+  assert.equal(String(b.provider), String(newProv));
+  assert.equal(b.pickupLocation, null);
+  assert.equal(b.pickupRequest, null);
+  assert.deepEqual(dropped, { booking: b._id });
+
+  //Picking a location: must be the provider's · cancels only a pending request
+  freshBooking();
+  PickupLocation.exists = async () => null;
+  res = mockRes();
+  await updateBooking(upd({ pickupLocation: id().toString() }), res);
+  assert.equal(res.code, 400);
+  b = freshBooking();
+  PickupLocation.exists = async () => ({ _id: id() });
+  dropped = null;
+  res = mockRes();
+  await updateBooking(upd({ pickupLocation: id().toString() }), res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(dropped, { booking: b._id, status: 'pending' });
+
+  //Dates-only edit leaves pick-up untouched and skips the request lookup
+  b = freshBooking();
+  dropped = null;
+  res = mockRes();
+  await updateBooking(upd({ startDate: '2026-12-21' }), res);
+  assert.equal(res.code, 200);
+  assert.equal(String(b.pickupLocation), String(oldLoc));
+  assert.equal(dropped, null);
 
   //toCsv(): BOM, quoting, and formula neutralising
   const csv = toCsv(['name', 'note'], [['Cars, Inc.', '=HYPERLINK("x")'], ['ไทย', 'say "hi"']]);
