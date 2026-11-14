@@ -1,7 +1,8 @@
 const express = require('express');
+const { getRegions } = require('../controllers/regions');
+
 const router = express.Router();
 
-// TODO (Person A):
-//   GET / (public) — master list of the 77 provinces (from the Region collection)   req R1
+router.get('/', getRegions); //req R1 — public master list of the 77 provinces
 
 module.exports = router;

@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Provider = require('../models/Provider');
+const Booking = require('../models/Booking');
+const PickupRequest = require('../models/PickupRequest');
 
 //Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
@@ -70,5 +73,23 @@ exports.logout = async (req, res, next) => {
   res.status(200).json({ success: true, data: {} });
 };
 
-// TODO (Person A): exports.deleteMe — DELETE /api/v1/auth/me (req A3)
-//   cascade the user's bookings + pick-up requests; a provider must delete its provider first (409)
+//@desc     Delete own account (+ own bookings and pick-up requests)
+//@route    DELETE /api/v1/auth/me
+//@access   Private                                                       req A3
+exports.deleteMe = async (req, res, next) => {
+  try {
+    //A provider account must delete its provider first, so other users' bookings aren't orphaned silently
+    if (await Provider.exists({ owner: req.user._id })) {
+      return res.status(409).json({ success: false, message: 'Delete your provider first (DELETE /api/v1/providers/:id)' });
+    }
+
+    await PickupRequest.deleteMany({ user: req.user._id });
+    await Booking.deleteMany({ user: req.user._id });
+    await req.user.deleteOne();
+
+    res.cookie('token', 'none', { expires: new Date(Date.now() + 10 * 1000), httpOnly: true });
+    res.status(200).json({ success: true, data: {} });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};

@@ -6,6 +6,12 @@ const Booking = require('../models/Booking');
 const Car = require('../models/Car');
 const { authorize, canManage } = require('../middleware/auth');
 const { addBooking } = require('../controllers/bookings');
+const Provider = require('../models/Provider');
+const PickupLocation = require('../models/PickupLocation');
+const { deleteMe } = require('../controllers/auth');
+const { removeProviderRegion } = require('../controllers/regions');
+const { deleteCar } = require('../controllers/cars');
+const { toCsv } = require('../utils/csv');
 
 const id = () => new mongoose.Types.ObjectId();
 const mockRes = () => {
@@ -56,6 +62,41 @@ const mockRes = () => {
   await addBooking(req, res);
   assert.equal(res.code, 201);
   assert.equal(res.body.data.provider, carProvider);
+
+  //toCsv(): BOM, quoting, and formula neutralising
+  const csv = toCsv(['name', 'note'], [['Cars, Inc.', '=HYPERLINK("x")'], ['ไทย', 'say "hi"']]);
+  assert.ok(csv.startsWith('﻿'));
+  assert.ok(csv.includes('"Cars, Inc."'));
+  assert.ok(csv.includes(`"'=HYPERLINK(""x"")"`));
+  assert.ok(csv.includes('"say ""hi"""'));
+
+  //deleteMe(): a provider account that still owns a provider → 409
+  Provider.exists = async () => true;
+  res = mockRes();
+  await deleteMe({ user: { _id: id() } }, res);
+  assert.equal(res.code, 409);
+
+  //removeProviderRegion(): 404 if not served · 409 while a pick-up location uses it · 200 removes it
+  const prov = { _id: id(), serviceRegions: ['Bangkok', 'Chonburi'], save: async () => {} };
+  res = mockRes();
+  await removeProviderRegion({ provider: prov, params: { region: 'Phuket' } }, res);
+  assert.equal(res.code, 404);
+  PickupLocation.exists = async () => true;
+  res = mockRes();
+  await removeProviderRegion({ provider: prov, params: { region: 'Chonburi' } }, res);
+  assert.equal(res.code, 409);
+  PickupLocation.exists = async () => null;
+  res = mockRes();
+  await removeProviderRegion({ provider: prov, params: { region: 'Chonburi' } }, res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(prov.serviceRegions, ['Bangkok']);
+
+  //deleteCar(): 409 while the car has a current/upcoming booking
+  Car.findById = () => ({ populate: async () => ({ _id: id(), provider: { owner: id() } }) });
+  Booking.exists = async () => true;
+  res = mockRes();
+  await deleteCar({ params: { id: 'c1' }, user: { role: 'admin', id: 'a1' } }, res);
+  assert.equal(res.code, 409);
 
   console.log('smoke ok');
 })().catch((err) => {

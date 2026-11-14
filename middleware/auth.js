@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Provider = require('../models/Provider');
 
 //Protect routes: require a valid JWT (Bearer header or httpOnly cookie) and attach req.user
 exports.protect = async (req, res, next) => {
@@ -40,4 +41,20 @@ exports.authorize = (...roles) => (req, res, next) => {
 
 //Ownership check shared by provider-scoped resources (provider, cars, pick-ups)
 exports.canManage = (provider, user) =>
-  user.role === 'admin' || (user.role === 'provider' && provider.owner.toString() === user.id);
+  user.role === 'admin' || (user.role === 'provider' && provider?.owner?.toString() === user.id);
+
+//Route middleware: load :providerId into req.provider (404 if missing); manage=true also requires canManage (403)
+exports.loadProvider = (manage) => async (req, res, next) => {
+  try {
+    req.provider = await Provider.findById(req.params.providerId);
+  } catch (err) {
+    return res.status(400).json({ success: false, message: `Invalid provider id ${req.params.providerId}` });
+  }
+  if (!req.provider) {
+    return res.status(404).json({ success: false, message: `No provider with the id of ${req.params.providerId}` });
+  }
+  if (manage && !exports.canManage(req.provider, req.user)) {
+    return res.status(403).json({ success: false, message: 'Not authorized to manage this provider' });
+  }
+  next();
+};

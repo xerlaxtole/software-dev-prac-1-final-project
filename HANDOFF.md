@@ -34,6 +34,8 @@ Effective pick-up = `pickupLocation` if set, else the approved `pickupRequest`, 
   - `protect` — Bearer header or httpOnly cookie `token`; sets `req.user` = full User doc.
   - `authorize(...roles)`
   - `canManage(provider, user)` → true for admin or the provider's owner.
+  - `loadProvider(manage)` — route middleware: loads `:providerId` into `req.provider` (400 bad id · 404 missing); with `true` also requires `canManage` (403). Use it on provider-scoped routes, e.g. `router.post('/', protect, authorize('admin','provider'), loadProvider(true), createPickupLocation)`.
+- `utils/csv.js` → `toCsv(headers, rows)` returns the CSV string (quotes fields, blocks Excel formula injection, adds a BOM so Thai text opens correctly).
 - Codebase style: writes catch → `res.status(400).json({ success: false, message: err.message })`; reads catch → 500 with a fixed message. Ownership failures → 403.
 - Only role `user` can create a booking (route uses `authorize('user')`).
 
@@ -67,11 +69,11 @@ The pickupRequests router is mounted in 3 places — branch on `req.params.booki
 1. **Overlap → 409** in addBooking: another booking on the same car with `start1 ≤ end2 && start2 ≤ end1` — query `{ car, startDate: { $lte: newEnd }, endDate: { $gte: newStart } }`. Re-run it in updateBooking when dates change, excluding the booking itself (`_id: { $ne: booking._id }`).
 2. **pickupLocation** (create + update) must belong to the booking's provider → else 400. Setting pickupLocation cancels a pending pickupRequest for that booking.
 3. **Changing `car` on update**: allow it, re-run overlap, re-copy provider from the new car, and if the provider changed clear pickupLocation and delete/clear the pickupRequest.
-4. **`GET /bookings/export`** (declare BEFORE `/:id`) — CSV of own bookings (admin: all). Columns: `bookingId, startDate, endDate, carBrand, carModel, licensePlate, providerName, providerTel, pickupName, pickupAddress, createdAt`. `res.set('Content-Type', 'text/csv')`; `res.set('Content-Disposition', 'attachment; filename=bookings.csv')`; build the string by hand, quote fields containing comma/quote/newline. No CSV library. **[req A1]**
+4. **`GET /bookings/export`** (declare BEFORE `/:id`) — CSV of own bookings (admin: all). Columns: `bookingId, startDate, endDate, carBrand, carModel, licensePlate, providerName, providerTel, pickupName, pickupAddress, createdAt`. Build it with `toCsv(headers, rows)` from `utils/csv.js`, then `res.set('Content-Type', 'text/csv; charset=utf-8')`; `res.set('Content-Disposition', 'attachment; filename=bookings.csv')`; `res.status(200).send(csv)` — same as `exportProviders` in `controllers/providers.js`. **[req A1]**
 
 ### Pick-up locations (new `controllers/pickupLocations.js` + `routes/pickupLocations.js`)
 
-"owner" = load the provider, then `canManage(provider, req.user)`, else 403.
+"owner" on `/providers/:providerId/...` routes = `loadProvider(true)` middleware (then use `req.provider`). On `/pickup-locations/:id` load the location, then `canManage(await Provider.findById(location.provider), req.user)`, else 403.
 
 | Method | Path | Access | Behavior | Req |
 |---|---|---|---|---|
@@ -92,9 +94,9 @@ The pickupRequests router is mounted in 3 places — branch on `req.params.booki
 | PUT | `/pickup-requests/:id/approve` | owner | pending only; status=approved, reviewedAt=now; optional `{addToList: true}` also creates a PickupLocation — requires a region ∈ serviceRegions else 400 | P3.8 |
 | PUT | `/pickup-requests/:id/reject` | owner | pending only; status=rejected, reviewedAt=now, `{reviewNote?}` | P3.8 |
 
-## Dependency on Person A (Anantawat)
+## Person A's side is done (Anantawat)
 
-Cars CRUD isn't built yet (Anantawat's part). To test bookings now: register a `role=provider` account, `POST /providers` (with `serviceRegions` like `["Bangkok"]`), then insert a test car directly in Atlas (or a throwaway seed) with that provider's `_id`.
+Auth, delete account, providers + CSV, regions and cars all work. Test data flow for bookings: register a `role=provider` account → `POST /providers` with `serviceRegions` like `["Bangkok"]` → `POST /providers/:providerId/cars` → register a normal user → `POST /cars/:carId/bookings`. The admin login is in `config.env` (`ADMIN_EMAIL` / `ADMIN_PASSWORD`). The shared database is already seeded — don't run `npm run seed`.
 
 ## Tests / demo
 

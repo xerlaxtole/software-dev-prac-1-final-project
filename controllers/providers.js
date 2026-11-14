@@ -5,6 +5,12 @@ const Booking = require('../models/Booking');
 const PickupLocation = require('../models/PickupLocation');
 const PickupRequest = require('../models/PickupRequest');
 const { canManage } = require('../middleware/auth');
+const { toCsv } = require('../utils/csv');
+
+const writeError = (res, err) =>
+  err.code === 11000
+    ? res.status(409).json({ success: false, message: 'A provider with this name already exists' })
+    : res.status(400).json({ success: false, message: err.message });
 
 //@desc     Get all providers — filter (?field[gt]=), ?region=, select, sort, page/limit
 //@route    GET /api/v1/providers
@@ -79,7 +85,7 @@ exports.createProvider = async (req, res, next) => {
     const provider = await Provider.create(req.body);
     res.status(201).json({ success: true, data: provider });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    writeError(res, err);
   }
 };
 
@@ -104,7 +110,7 @@ exports.updateProvider = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: provider });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    writeError(res, err);
   }
 };
 
@@ -136,7 +142,20 @@ exports.deleteProvider = async (req, res, next) => {
   }
 };
 
-// TODO (Person A):
-//   exports.exportProviders  — GET /providers/export  (CSV: name, address, tel, serviceRegions)      req A2
-//   regions — GET/POST/PUT /providers/:providerId/regions, DELETE /:providerId/regions/:region     req R1.1–1.4
-//     (removing a region still used by a pick-up location → 409)
+//@desc     Download the provider list as CSV
+//@route    GET /api/v1/providers/export
+//@access   Private                                                       req A2
+exports.exportProviders = async (req, res, next) => {
+  try {
+    const providers = await Provider.find().sort('name');
+    const csv = toCsv(
+      ['name', 'address', 'tel', 'serviceRegions'],
+      providers.map((p) => [p.name, p.address, p.tel, p.serviceRegions.join('; ')])
+    );
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', 'attachment; filename=providers.csv');
+    res.status(200).send(csv);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Cannot export providers' });
+  }
+};

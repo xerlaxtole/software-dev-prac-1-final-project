@@ -1,5 +1,6 @@
 const express = require('express');
-// const { protect, authorize } = require('../middleware/auth');
+const { getCars, getCar, createCar, updateCar, deleteCar } = require('../controllers/cars');
+const { protect, authorize, loadProvider } = require('../middleware/auth');
 
 const bookingRouter = require('./bookings');
 
@@ -9,11 +10,14 @@ const router = express.Router({ mergeParams: true });
 //Re-route: POST /cars/:carId/bookings → bookings controller (only users rent)
 router.use('/:carId/bookings', bookingRouter);
 
-// TODO (Person A):
-//   GET    /            protect   search ?region= &provider= &type= &start= &end= (free cars)  req 3, R2.1
-//   GET    /:id         protect   one car + provider                                           req 3
-//   POST   /            owner     add car            (mounted at /providers/:providerId/cars)
-//   PUT    /:id         owner     update car         (use canManage from middleware/auth)
-//   DELETE /:id         owner     delete; 409 if upcoming bookings
+router
+  .route('/')
+  .get(protect, getCars) //req 3, R2.1 — ?region= ?type= ?provider= ?start=&end=
+  .post(protect, authorize('admin', 'provider'), loadProvider(true), createCar); //at /providers/:providerId/cars
+router
+  .route('/:id')
+  .get(protect, getCar) //req 3
+  .put(protect, authorize('admin', 'provider'), updateCar)
+  .delete(protect, authorize('admin', 'provider'), deleteCar);
 
 module.exports = router;
