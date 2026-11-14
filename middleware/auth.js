@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Protect routes: require a valid JWT (Bearer header or httpOnly cookie) and attach req.user.
+//Protect routes: require a valid JWT (Bearer header or httpOnly cookie) and attach req.user
 exports.protect = async (req, res, next) => {
   let token;
   if (req.headers.authorization?.startsWith('Bearer')) {
@@ -10,7 +10,8 @@ exports.protect = async (req, res, next) => {
     token = req.cookies.token;
   }
 
-  if (!token) {
+  //Postman sends the literal string "null" when the token variable is unset; logout sets the cookie to "none"
+  if (!token || token === 'null' || token === 'none') {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
   }
 
@@ -26,7 +27,7 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Grant access only to the given roles.
+//Grant access to specific roles
 exports.authorize = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user.role)) {
     return res.status(403).json({
@@ -36,3 +37,7 @@ exports.authorize = (...roles) => (req, res, next) => {
   }
   next();
 };
+
+//Ownership check shared by provider-scoped resources (provider, cars, pick-ups)
+exports.canManage = (provider, user) =>
+  user.role === 'admin' || (user.role === 'provider' && provider.owner.toString() === user.id);

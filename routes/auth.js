@@ -1,12 +1,13 @@
 const express = require('express');
-const router = express.Router();
-// const { protect } = require('../middleware/auth');
+const { register, login, getMe, logout } = require('../controllers/auth');
+const { protect } = require('../middleware/auth');
 
-// TODO (Person A):
-//   POST   /register          (name, tel, email, password, role?)        req 1
-//   POST   /login                                                        req 2
-//   GET    /logout   protect                                             req 2
-//   GET    /me       protect                                             req 2
-//   DELETE /me       protect   (provider must delete its provider first) req A3
+const router = express.Router();
+
+router.post('/register', register); //req 1
+router.post('/login', login); //req 2
+router.get('/logout', protect, logout); //req 2
+router.get('/me', protect, getMe); //req 2
+// TODO (Person A): router.delete('/me', protect, deleteMe);  //req A3
 
 module.exports = router;

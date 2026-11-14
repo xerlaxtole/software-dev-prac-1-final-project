@@ -1,15 +1,31 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true });
-// const { protect, authorize } = require('../middleware/auth');
+const {
+  getBookings,
+  getBooking,
+  addBooking,
+  updateBooking,
+  deleteBooking,
+} = require('../controllers/bookings');
+const { protect, authorize } = require('../middleware/auth');
 
-// TODO (Person B):
-//   GET    /            protect   user→own · admin→all · provider→their cars           req 4, 7
-//   GET    /export      protect   own bookings CSV (admin: all)                         req A1
-//   GET    /:id         self|admin  one + car/provider/pickup                           req 4, 7
-//   POST   /            USER ONLY  (at /cars/:carId/bookings) { startDate,endDate,pickupLocation? }
-//                                  400 if user already has 3 · 409 if car taken (overlap)
-//                                  provider & admin cannot rent -> 403                  req 3, P3.5
-//   PUT    /:id         self|admin  edit dates/car/pickup (re-check overlap; reconcile pickupRequest)  req 5, 8
-//   DELETE /:id         self|admin  delete + its pickup request                         req 6, 9
+const pickupRequestRouter = require('./pickupRequests');
+
+//Mounted at /bookings, /providers/:providerId/bookings and /cars/:carId/bookings
+const router = express.Router({ mergeParams: true });
+
+//Re-route: /bookings/:bookingId/pickup-request (Person B, req P3.6)
+router.use('/:bookingId/pickup-request', pickupRequestRouter);
+
+// TODO (Person B): GET /export (must be declared BEFORE /:id)   req A1
+
+router
+  .route('/')
+  .get(protect, getBookings) //req 4, 7
+  .post(protect, authorize('user'), addBooking); //req 3 — only users rent (provider/admin → 403)
+router
+  .route('/:id')
+  .get(protect, getBooking) //req 4, 7
+  .put(protect, authorize('admin', 'user'), updateBooking) //req 5, 8
+  .delete(protect, authorize('admin', 'user'), deleteBooking); //req 6, 9
 
 module.exports = router;

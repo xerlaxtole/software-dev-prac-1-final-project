@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router({ mergeParams: true });
 // const { protect, authorize } = require('../middleware/auth');
 
-// TODO (Person B):
-//   On a booking (mounted at /bookings/:id/pickup-request):
+// TODO (Person B): one router, three mount points — branch on req.params.bookingId / req.params.providerId
+//   On a booking (mounted at /bookings/:bookingId/pickup-request):
 //     POST   /        self        request { name, address, region? } (replaces a rejected one)   req P3.6
 //     GET    /        self|admin  see request + status                                           req P3.6
 //     DELETE /        self        cancel while pending                                           req P3.6

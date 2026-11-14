@@ -16,9 +16,10 @@ const BookingSchema = new mongoose.Schema(
 // Overlap queries hit (car + dates). Max-3 and the overlap check live in the controller.
 BookingSchema.index({ car: 1, startDate: 1, endDate: 1 });
 
+//invalidate() makes this a ValidationError, so controllers can answer 400 instead of 500
 BookingSchema.pre('validate', function (next) {
   if (this.startDate && this.endDate && this.endDate < this.startDate) {
-    return next(new Error('endDate must be on or after startDate'));
+    this.invalidate('endDate', 'endDate must be on or after startDate');
   }
   next();
 });
