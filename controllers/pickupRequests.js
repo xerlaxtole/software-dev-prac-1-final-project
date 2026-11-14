@@ -132,3 +132,25 @@ exports.cancelPickupRequest = async (req, res, next) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+//@desc     List a provider's pick-up requests — ?status=pending (default) | approved | rejected
+//@route    GET /api/v1/providers/:providerId/pickup-requests
+//@access   Private (provider owner, admin)                               req P3.7
+exports.getPickupRequests = async (req, res, next) => {
+  try {
+    //loadProvider(true) already answered 400/404/403 and set req.provider
+    const status = req.query.status || 'pending';
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'status must be pending, approved or rejected' });
+    }
+
+    const requests = await PickupRequest.find({ provider: req.provider._id, status })
+      .populate({ path: 'booking', select: 'startDate endDate car' })
+      .populate({ path: 'user', select: 'name tel email' })
+      .sort('createdAt'); //oldest first: the order to review them in
+    res.status(200).json({ success: true, count: requests.length, data: requests });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: 'Cannot find pick-up requests' });
+  }
+};
