@@ -5,6 +5,7 @@ const {
   cancelPickupRequest,
   getPickupRequests,
   approvePickupRequest,
+  rejectPickupRequest,
 } = require('../controllers/pickupRequests');
 const { protect, authorize, loadProvider } = require('../middleware/auth');
 
@@ -29,5 +30,6 @@ router.get('/', onProvider, protect, authorize('admin', 'provider'), loadProvide
 
 //Standalone: /pickup-requests/:id/approve|reject                         req P3.8
 router.put('/:id/approve', standalone, protect, authorize('admin', 'provider'), approvePickupRequest);
+router.put('/:id/reject', standalone, protect, authorize('admin', 'provider'), rejectPickupRequest);
 
 module.exports = router;

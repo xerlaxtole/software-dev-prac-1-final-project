@@ -204,3 +204,36 @@ exports.approvePickupRequest = async (req, res, next) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+//@desc     Reject a pending request { reviewNote? } — the user can then send a new one
+//@route    PUT /api/v1/pickup-requests/:id/reject
+//@access   Private (provider owner, admin)                               req P3.8
+exports.rejectPickupRequest = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid pick-up request id ${req.params.id}` });
+    }
+    const request = await PickupRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: `No pick-up request with the id of ${req.params.id}` });
+    }
+
+    const provider = await Provider.findById(request.provider);
+    if (!canManage(provider, req.user)) {
+      return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to review this pick-up request` });
+    }
+    if (request.status !== 'pending') {
+      return res.status(409).json({ success: false, message: `Only a pending request can be rejected (this one is ${request.status})` });
+    }
+
+    request.status = 'rejected';
+    request.reviewedAt = new Date();
+    if (typeof req.body.reviewNote === 'string') request.reviewNote = req.body.reviewNote;
+    await request.save();
+
+    //The booking keeps pointing at it so the user can see why; a new request replaces it
+    res.status(200).json({ success: true, data: request });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
