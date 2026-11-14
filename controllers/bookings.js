@@ -78,16 +78,51 @@ exports.addBooking = async (req, res, next) => {
       });
     }
 
-    // TODO (Person B): 409 if this car has an overlapping booking (start1 ≤ end2 && start2 ≤ end1)
-    // TODO (Person B): pickupLocation must belong to car.provider (else 400)
+    const { startDate, endDate, pickupLocation } = req.body;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start) || isNaN(end) || start >= end) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+
+    const conflict = await Booking.findOne({
+      car: req.params.carId,
+      startDate: { $lt: end },
+      endDate:   { $gt: start },
+    });
+
+    if (conflict) {
+      return res.status(409).json({ message: 'Car is already booked for these dates' });
+    }
+
+    if (!pickupLocation) {
+      return res.status(400).json({ success: false, message: 'pickupLocation is required' });
+    }
+
+    if (!mongoose.isValidObjectId(pickupLocation)) {
+      return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
+    }
+
+    const validLocation = await PickupLocation.exists({
+      _id: pickupLocation,
+      provider: car.provider,
+    });
+
+    if (!validLocation) {
+      return res.status(400).json({
+        success: false,
+        message: 'pickupLocation does not belong to this car\'s provider',
+      });
+    }
 
     const booking = await Booking.create({
       user: req.user.id,
       car: car._id,
       provider: car.provider,
-      startDate: req.body.startDate,
-      endDate: req.body.endDate,
-      pickupLocation: req.body.pickupLocation,
+      startDate: start,
+      endDate: end,
+      pickupLocation: pickupLocation,
     });
 
     res.status(201).json({ success: true, data: booking });
