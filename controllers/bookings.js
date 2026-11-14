@@ -1,6 +1,8 @@
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Car = require('../models/Car');
 const Provider = require('../models/Provider');
+const PickupLocation = require('../models/PickupLocation');
 const PickupRequest = require('../models/PickupRequest');
 const { toCsv } = require('../utils/csv');
 
@@ -83,38 +85,25 @@ exports.addBooking = async (req, res, next) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    if (isNaN(start) || isNaN(end) || start >= end) {
-      return res.status(400).json({ message: 'Invalid date range' });
+    //Same-day rental (start == end) is allowed, matching the model validator
+    if (isNaN(start) || isNaN(end) || start > end) {
+      return res.status(400).json({ success: false, message: 'Invalid date range' });
     }
 
-    const conflict = await Booking.findOne({
-      car: req.params.carId,
-      startDate: { $lt: end },
-      endDate:   { $gt: start },
-    });
+    //Optional: without one, pick-up falls back to a pick-up request or the provider's address
+    if (pickupLocation) {
+      if (!mongoose.isValidObjectId(pickupLocation)) {
+        return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
+      }
+      if (!(await PickupLocation.exists({ _id: pickupLocation, provider: car.provider }))) {
+        return res.status(400).json({ success: false, message: "pickupLocation does not belong to this car's provider" });
+      }
+    }
 
+    //Inclusive overlap (start1 ≤ end2 && start2 ≤ end1), same rule as the car search in controllers/cars.js
+    const conflict = await Booking.exists({ car: car._id, startDate: { $lte: end }, endDate: { $gte: start } });
     if (conflict) {
-      return res.status(409).json({ message: 'Car is already booked for these dates' });
-    }
-
-    if (!pickupLocation) {
-      return res.status(400).json({ success: false, message: 'pickupLocation is required' });
-    }
-
-    if (!mongoose.isValidObjectId(pickupLocation)) {
-      return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
-    }
-
-    const validLocation = await PickupLocation.exists({
-      _id: pickupLocation,
-      provider: car.provider,
-    });
-
-    if (!validLocation) {
-      return res.status(400).json({
-        success: false,
-        message: 'pickupLocation does not belong to this car\'s provider',
-      });
+      return res.status(409).json({ success: false, message: 'Car is already booked for these dates' });
     }
 
     const booking = await Booking.create({
@@ -123,7 +112,7 @@ exports.addBooking = async (req, res, next) => {
       provider: car.provider,
       startDate: start,
       endDate: end,
-      pickupLocation: pickupLocation,
+      pickupLocation: pickupLocation || null,
     });
 
     res.status(201).json({ success: true, data: booking });

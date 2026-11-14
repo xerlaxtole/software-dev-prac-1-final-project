@@ -58,10 +58,43 @@ const mockRes = () => {
 
   Booking.countDocuments = async () => 2;
   Booking.create = async (doc) => doc;
+  Booking.exists = async () => null;
   res = mockRes();
   await addBooking(req, res);
   assert.equal(res.code, 201);
   assert.equal(res.body.data.provider, carProvider);
+  assert.equal(res.body.data.pickupLocation, null); //pickupLocation is optional
+
+  //addBooking(): 400 bad/reversed dates · 409 overlap · pickupLocation must be the car provider's
+  res = mockRes();
+  await addBooking({ ...req, body: { startDate: '2026-12-23', endDate: '2026-12-20' } }, res);
+  assert.equal(res.code, 400);
+  res = mockRes();
+  await addBooking({ ...req, body: { startDate: 'nope', endDate: '2026-12-20' } }, res);
+  assert.equal(res.code, 400);
+
+  let overlapQuery;
+  Booking.exists = async (q) => ((overlapQuery = q), { _id: id() });
+  res = mockRes();
+  await addBooking(req, res);
+  assert.equal(res.code, 409);
+  assert.equal(res.body.success, false);
+  assert.ok(overlapQuery.startDate.$lte && overlapQuery.endDate.$gte); //inclusive, like the car search
+  Booking.exists = async () => null;
+
+  res = mockRes();
+  await addBooking({ ...req, body: { ...req.body, pickupLocation: 'not-an-id' } }, res);
+  assert.equal(res.code, 400);
+  PickupLocation.exists = async () => null; //location of another provider
+  res = mockRes();
+  await addBooking({ ...req, body: { ...req.body, pickupLocation: id().toString() } }, res);
+  assert.equal(res.code, 400);
+  PickupLocation.exists = async () => ({ _id: id() });
+  const loc = id().toString();
+  res = mockRes();
+  await addBooking({ ...req, body: { ...req.body, pickupLocation: loc } }, res);
+  assert.equal(res.code, 201);
+  assert.equal(res.body.data.pickupLocation, loc);
 
   //toCsv(): BOM, quoting, and formula neutralising
   const csv = toCsv(['name', 'note'], [['Cars, Inc.', '=HYPERLINK("x")'], ['ไทย', 'say "hi"']]);
