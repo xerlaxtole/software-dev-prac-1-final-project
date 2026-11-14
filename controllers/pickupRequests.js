@@ -95,3 +95,40 @@ exports.getPickupRequest = async (req, res, next) => {
     res.status(500).json({ success: false, message: 'Cannot find pick-up request' });
   }
 };
+
+//@desc     Cancel a booking's pick-up request (only while pending)
+//@route    DELETE /api/v1/bookings/:bookingId/pickup-request
+//@access   Private (booking's user)                                      req P3.6
+exports.cancelPickupRequest = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    if (!mongoose.isValidObjectId(bookingId)) {
+      return res.status(400).json({ success: false, message: `Invalid booking id ${bookingId}` });
+    }
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: `No booking with the id of ${bookingId}` });
+    }
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to cancel this pick-up request` });
+    }
+
+    const request = await PickupRequest.findOne({ booking: booking._id });
+    if (!request) {
+      return res.status(404).json({ success: false, message: `No pick-up request for booking ${bookingId}` });
+    }
+    //Once the provider has decided, the request is part of the record
+    if (request.status !== 'pending') {
+      return res.status(409).json({ success: false, message: `Only a pending request can be cancelled (this one is ${request.status})` });
+    }
+
+    //Unlink the booking first, so it never points at a deleted request
+    booking.pickupRequest = null;
+    await booking.save();
+    await request.deleteOne();
+
+    res.status(200).json({ success: true, data: {} });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
