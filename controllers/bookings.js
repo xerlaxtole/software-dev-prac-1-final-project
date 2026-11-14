@@ -5,13 +5,22 @@ const Provider = require('../models/Provider');
 const PickupLocation = require('../models/PickupLocation');
 const PickupRequest = require('../models/PickupRequest');
 const { toCsv } = require('../utils/csv');
+const { canManage } = require('../middleware/auth');
 
 const populateBooking = [
   { path: 'car', select: 'brand model licensePlate dailyRate' },
   { path: 'provider', select: 'name address tel' },
 ];
 
+//Write access (update/delete): the booking's user or admin
 const isSelfOrAdmin = (booking, user) => user.role === 'admin' || booking.user.toString() === user.id;
+
+//Read access: also the owner of the booking's provider (works whether booking.provider is populated or not)
+const canViewBooking = async (booking, user) => {
+  if (isSelfOrAdmin(booking, user)) return true;
+  if (user.role !== 'provider') return false;
+  return canManage(await Provider.findById(booking.provider._id ?? booking.provider), user);
+};
 
 //@desc     Get bookings — user: own · provider: its provider's · admin: all
 //@route    GET /api/v1/bookings
@@ -19,20 +28,38 @@ const isSelfOrAdmin = (booking, user) => user.role === 'admin' || booking.user.t
 //@access   Private
 exports.getBookings = async (req, res, next) => {
   try {
-    let filter;
+    const { providerId } = req.params;
 
-    if (req.user.role === 'admin') {
-      filter = req.params.providerId ? { provider: req.params.providerId } : {};
-    } else if (req.user.role === 'provider') {
-      const own = await Provider.findOne({ owner: req.user.id });
-      if (req.params.providerId && (!own || own.id !== req.params.providerId)) {
-        return res.status(403).json({ success: false, message: 'Not authorized to view these bookings' });
+    //At /providers/:providerId/bookings: 400 bad id · 404 missing (every role), like loadProvider
+    let provider = null;
+    if (providerId) {
+      if (!mongoose.isValidObjectId(providerId)) {
+        return res.status(400).json({ success: false, message: `Invalid provider id ${providerId}` });
       }
-      filter = { provider: own ? own._id : null };
+      provider = await Provider.findById(providerId);
+      if (!provider) {
+        return res.status(404).json({ success: false, message: `No provider with the id of ${providerId}` });
+      }
+    }
+
+    let filter;
+    if (req.user.role === 'admin') {
+      filter = provider ? { provider: provider._id } : {};
+    } else if (req.user.role === 'provider') {
+      if (provider) {
+        if (!canManage(provider, req.user)) {
+          return res.status(403).json({ success: false, message: 'Not authorized to view these bookings' });
+        }
+        filter = { provider: provider._id };
+      } else {
+        //No provider profile yet → empty list
+        const own = await Provider.findOne({ owner: req.user.id });
+        filter = { provider: own ? own._id : null };
+      }
     } else {
       //General users can see only their bookings
       filter = { user: req.user.id };
-      if (req.params.providerId) filter.provider = req.params.providerId;
+      if (provider) filter.provider = provider._id;
     }
 
     const bookings = await Booking.find(filter).populate(populateBooking);
@@ -45,14 +72,17 @@ exports.getBookings = async (req, res, next) => {
 
 //@desc     Get single booking
 //@route    GET /api/v1/bookings/:id
-//@access   Private (self, admin)
+//@access   Private (self, provider owner, admin)
 exports.getBooking = async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid booking id ${req.params.id}` });
+    }
     const booking = await Booking.findById(req.params.id).populate(populateBooking);
     if (!booking) {
       return res.status(404).json({ success: false, message: `No booking with the id of ${req.params.id}` });
     }
-    if (!isSelfOrAdmin(booking, req.user)) {
+    if (!(await canViewBooking(booking, req.user))) {
       return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to view this booking` });
     }
     res.status(200).json({ success: true, data: booking });
@@ -67,6 +97,13 @@ exports.getBooking = async (req, res, next) => {
 //@access   Private (user only — route uses authorize('user'))
 exports.addBooking = async (req, res, next) => {
   try {
+    //The router is also mounted at /bookings and /providers/:providerId/bookings, where there is no carId
+    if (!req.params.carId) {
+      return res.status(400).json({ success: false, message: 'carId is required: POST /cars/:carId/bookings' });
+    }
+    if (!mongoose.isValidObjectId(req.params.carId)) {
+      return res.status(400).json({ success: false, message: `Invalid car id ${req.params.carId}` });
+    }
     const car = await Car.findById(req.params.carId);
     if (!car) {
       return res.status(404).json({ success: false, message: `No car with the id of ${req.params.carId}` });
@@ -126,6 +163,9 @@ exports.addBooking = async (req, res, next) => {
 //@access   Private (self, admin)
 exports.updateBooking = async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid booking id ${req.params.id}` });
+    }
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ success: false, message: `No booking with the id of ${req.params.id}` });
@@ -205,6 +245,9 @@ exports.updateBooking = async (req, res, next) => {
 //@access   Private (self, admin)
 exports.deleteBooking = async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid booking id ${req.params.id}` });
+    }
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ success: false, message: `No booking with the id of ${req.params.id}` });

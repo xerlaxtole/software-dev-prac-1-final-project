@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Car = require('../models/Car');
 const { authorize, canManage } = require('../middleware/auth');
-const { addBooking, updateBooking } = require('../controllers/bookings');
+const { addBooking, updateBooking, getBooking, getBookings, deleteBooking } = require('../controllers/bookings');
 const PickupRequest = require('../models/PickupRequest');
 const Provider = require('../models/Provider');
 const PickupLocation = require('../models/PickupLocation');
@@ -42,11 +42,18 @@ const mockRes = () => {
   const bad = new Booking({ user: id(), car: id(), provider: id(), startDate: '2026-12-20', endDate: '2026-12-18' });
   await assert.rejects(bad.validate(), (e) => e.name === 'ValidationError' && /endDate/.test(e.message));
 
-  //addBooking(): 404 unknown car · 400 at 3 bookings · 201 copies provider from the car
-  const req = { params: { carId: 'c1' }, user: { id: 'u1' }, body: { startDate: '2026-12-20', endDate: '2026-12-23' } };
+  //addBooking(): 400 no/bad carId · 404 unknown car · 400 at 3 bookings · 201 copies provider from the car
+  const req = { params: { carId: id().toString() }, user: { id: 'u1' }, body: { startDate: '2026-12-20', endDate: '2026-12-23' } };
+
+  let res = mockRes();
+  await addBooking({ ...req, params: {} }, res); //POST /bookings has no carId
+  assert.equal(res.code, 400);
+  res = mockRes();
+  await addBooking({ ...req, params: { carId: 'c1' } }, res);
+  assert.equal(res.code, 400);
 
   Car.findById = async () => null;
-  let res = mockRes();
+  res = mockRes();
   await addBooking(req, res);
   assert.equal(res.code, 404);
 
@@ -110,7 +117,7 @@ const mockRes = () => {
     Booking.findById = async () => b;
     return b;
   };
-  const upd = (body, user = { role: 'user', id: owner.toString() }) => ({ params: { id: 'b1' }, user, body });
+  const upd = (body, user = { role: 'user', id: owner.toString() }) => ({ params: { id: id().toString() }, user, body });
   let dropped;
   PickupRequest.findOne = async (q) => ({ q, deleteOne: async () => (dropped = q) });
 
@@ -168,6 +175,54 @@ const mockRes = () => {
   assert.equal(res.code, 200);
   assert.equal(String(b.pickupLocation), String(oldLoc));
   assert.equal(dropped, null);
+
+  //Malformed booking id → 400 on update/delete (not a raw CastError)
+  res = mockRes();
+  await updateBooking({ ...upd({}), params: { id: 'abc' } }, res);
+  assert.equal(res.code, 400);
+  res = mockRes();
+  await deleteBooking({ ...upd({}), params: { id: 'abc' } }, res);
+  assert.equal(res.code, 400);
+
+  //getBooking(): 400 bad id · booking's user, its provider's owner and admin may view; others 403
+  const provOwner = id();
+  const ownProv = { _id: id(), owner: provOwner };
+  const shown = { user: owner, provider: { _id: ownProv._id, name: 'P' } }; //provider populated
+  Booking.findById = () => ({ populate: async () => shown });
+  Provider.findById = async () => ownProv;
+  const view = async (user, bookingId = id().toString()) => {
+    const r = mockRes();
+    await getBooking({ params: { id: bookingId }, user }, r);
+    return r.code;
+  };
+  assert.equal(await view({ role: 'user', id: owner.toString() }, 'abc'), 400);
+  assert.equal(await view({ role: 'user', id: owner.toString() }), 200);
+  assert.equal(await view({ role: 'user', id: id().toString() }), 403);
+  assert.equal(await view({ role: 'provider', id: provOwner.toString() }), 200);
+  assert.equal(await view({ role: 'provider', id: id().toString() }), 403);
+  assert.equal(await view({ role: 'admin', id: 'a1' }), 200);
+
+  //getBookings() at /providers/:providerId/bookings: 400 bad id · 404 missing · 403 other provider · own → filter
+  let listFilter;
+  Booking.find = (f) => ((listFilter = f), { populate: async () => [] });
+  const list = async (user, providerId) => {
+    const r = mockRes();
+    await getBookings({ params: providerId ? { providerId } : {}, user }, r);
+    return r.code;
+  };
+  const provUser = { role: 'provider', id: provOwner.toString() };
+  assert.equal(await list(provUser, 'abc'), 400);
+  Provider.findById = async () => null;
+  assert.equal(await list({ role: 'admin', id: 'a1' }, id().toString()), 404);
+  Provider.findById = async () => ownProv;
+  assert.equal(await list({ role: 'provider', id: id().toString() }, ownProv._id.toString()), 403);
+  assert.equal(await list(provUser, ownProv._id.toString()), 200);
+  assert.deepEqual(listFilter, { provider: ownProv._id });
+  assert.equal(await list({ role: 'user', id: owner.toString() }, ownProv._id.toString()), 200);
+  assert.deepEqual(listFilter, { user: owner.toString(), provider: ownProv._id });
+  Provider.findOne = async () => null; //provider account without a provider profile
+  assert.equal(await list(provUser), 200);
+  assert.deepEqual(listFilter, { provider: null });
 
   //toCsv(): BOM, quoting, and formula neutralising
   const csv = toCsv(['name', 'note'], [['Cars, Inc.', '=HYPERLINK("x")'], ['ไทย', 'say "hi"']]);
