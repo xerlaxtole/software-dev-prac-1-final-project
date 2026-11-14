@@ -24,3 +24,28 @@ exports.getPickupLocations = async (req, res, next) => {
     res.status(500).json({ success: false, message: 'Cannot find pick-up locations' });
   }
 };
+
+//@desc     Add a pick-up location { name, address, region }
+//@route    POST /api/v1/providers/:providerId/pickup-locations
+//@access   Private (provider owner, admin)
+exports.addPickupLocation = async (req, res, next) => {
+  try {
+    const { name, address, region } = req.body;
+
+    if (!req.provider.serviceRegions.includes(region)) {
+      return res.status(400).json({
+        success: false,
+        message: `region must be one of this provider's service regions: ${req.provider.serviceRegions.join(', ') || '(none yet)'}`,
+      });
+    }
+
+    if (typeof name === 'string' && (await PickupLocation.exists({ provider: req.provider._id, name: name.trim() }))) {
+      return res.status(409).json({ success: false, message: `This provider already has a pick-up location named ${name.trim()}` });
+    }
+
+    const location = await PickupLocation.create({ provider: req.provider._id, name, address, region });
+    res.status(201).json({ success: true, data: location });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
