@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Car = require('../models/Car');
-const { authorize, canManage } = require('../middleware/auth');
+const { authorize, canManage, loadProvider } = require('../middleware/auth');
 const { addBooking } = require('../controllers/bookings');
 const Provider = require('../models/Provider');
 const PickupLocation = require('../models/PickupLocation');
@@ -12,6 +12,8 @@ const { deleteMe } = require('../controllers/auth');
 const { removeProviderRegion } = require('../controllers/regions');
 const { deleteCar } = require('../controllers/cars');
 const { toCsv } = require('../utils/csv');
+const Region = require('../models/Region');
+const { getPickupLocations } = require('../controllers/pickupLocations');
 
 const id = () => new mongoose.Types.ObjectId();
 const mockRes = () => {
@@ -97,6 +99,29 @@ const mockRes = () => {
   res = mockRes();
   await deleteCar({ params: { id: 'c1' }, user: { role: 'admin', id: 'a1' } }, res);
   assert.equal(res.code, 409);
+
+  //GET /pickup-locations (no :providerId) is stopped by loadProvider(false) → 404, so there is no all-providers list
+  Provider.findById = async () => null;
+  res = mockRes();
+  await loadProvider(false)({ params: {}, user: { role: 'user', id: 'u1' } }, res, () => assert.fail('must not list'));
+  assert.equal(res.code, 404);
+
+  //getPickupLocations() (after loadProvider): 400 unknown region · filters by provider + region
+  let locFilter;
+  PickupLocation.find = (f) => ((locFilter = f), { populate: () => ({ sort: async () => [] }) });
+  const locProv = { _id: id() };
+  const listLocs = async (query = {}) => {
+    const r = mockRes();
+    await getPickupLocations({ params: { providerId: locProv._id.toString() }, query, provider: locProv }, r);
+    return r.code;
+  };
+  Region.exists = async () => null;
+  assert.equal(await listLocs({ region: 'Atlantis' }), 400);
+  Region.exists = async () => ({ _id: id() });
+  assert.equal(await listLocs({ region: 'Bangkok' }), 200);
+  assert.deepEqual(locFilter, { provider: locProv._id, region: 'Bangkok' });
+  assert.equal(await listLocs(), 200);
+  assert.deepEqual(locFilter, { provider: locProv._id });
 
   console.log('smoke ok');
 })().catch((err) => {
