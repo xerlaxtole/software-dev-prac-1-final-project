@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Provider = require('../models/Provider');
 const PickupRequest = require('../models/PickupRequest');
+const { canManage } = require('../middleware/auth');
 
 //@desc     Request a custom pick-up address for a booking { name, address, region? } (replaces a rejected one)
 //@route    POST /api/v1/bookings/:bookingId/pickup-request
@@ -57,5 +58,40 @@ exports.createPickupRequest = async (req, res, next) => {
     res.status(201).json({ success: true, data: request });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+//@desc     See a booking's pick-up request and its status
+//@route    GET /api/v1/bookings/:bookingId/pickup-request
+//@access   Private (booking's user, its provider's owner, admin)        req P3.6
+exports.getPickupRequest = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    if (!mongoose.isValidObjectId(bookingId)) {
+      return res.status(400).json({ success: false, message: `Invalid booking id ${bookingId}` });
+    }
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: `No booking with the id of ${bookingId}` });
+    }
+
+    //Same access as viewing the booking itself
+    const allowed =
+      req.user.role === 'admin' ||
+      booking.user.toString() === req.user.id ||
+      (req.user.role === 'provider' && canManage(await Provider.findById(booking.provider), req.user));
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to view this pick-up request` });
+    }
+
+    const request = await PickupRequest.findOne({ booking: booking._id });
+    if (!request) {
+      return res.status(404).json({ success: false, message: `No pick-up request for booking ${bookingId}` });
+    }
+
+    res.status(200).json({ success: true, data: request });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: 'Cannot find pick-up request' });
   }
 };

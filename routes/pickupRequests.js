@@ -1,5 +1,5 @@
 const express = require('express');
-const { createPickupRequest } = require('../controllers/pickupRequests');
+const { createPickupRequest, getPickupRequest } = require('../controllers/pickupRequests');
 const { protect, authorize } = require('../middleware/auth');
 
 //One router, three mount points: /bookings/:bookingId/pickup-request, /providers/:providerId/pickup-requests, /pickup-requests
@@ -12,6 +12,7 @@ const onBooking = (req, res, next) => (req.params.bookingId ? next() : next('rou
 router
   .route('/')
   .all(onBooking)
-  .post(protect, authorize('user'), createPickupRequest);
+  .post(protect, authorize('user'), createPickupRequest)
+  .get(protect, getPickupRequest);
 
 module.exports = router;
