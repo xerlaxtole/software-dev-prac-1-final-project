@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Region = require('../models/Region');
 const PickupLocation = require('../models/PickupLocation');
 
@@ -47,5 +48,27 @@ exports.addPickupLocation = async (req, res, next) => {
     res.status(201).json({ success: true, data: location });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+//@desc     Get one pick-up location (with its provider)
+//@route    GET /api/v1/pickup-locations/:id
+//@access   Private
+exports.getPickupLocation = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Invalid pick-up location id ${req.params.id}` });
+    }
+
+    const location = await PickupLocation.findById(req.params.id).populate({ path: 'provider', select: 'name address tel' });
+
+    if (!location || (req.params.providerId && location.provider?.id !== req.params.providerId)) {
+      return res.status(404).json({ success: false, message: `No pick-up location with the id of ${req.params.id}` });
+    }
+
+    res.status(200).json({ success: true, data: location });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: 'Cannot find pick-up location' });
   }
 };
