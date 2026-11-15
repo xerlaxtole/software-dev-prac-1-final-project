@@ -1,12 +1,23 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true });
-// const { protect, authorize } = require('../middleware/auth');
+const {
+  getPickupLocations,
+  getPickupLocation,
+  addPickupLocation,
+  updatePickupLocation,
+  deletePickupLocation,
+} = require('../controllers/pickupLocations');
+const { protect, authorize, loadProvider } = require('../middleware/auth');
 
-// TODO (Person B):
-//   GET    /            protect   list a provider's locations ?region=   (at /providers/:providerId/pickup-locations)  req P3.2, P3.5
-//   POST   /            owner     create { name, address, region∈serviceRegions }                                      req P3.1
-//   GET    /:id         protect   one location                                                                        req P3.2
-//   PUT    /:id         owner     update                                                                              req P3.3
-//   DELETE /:id         owner     delete; set bookings using it to pickupLocation:null                                 req P3.4
+const router = express.Router({ mergeParams: true });
+
+router
+  .route('/')
+  .get(protect, loadProvider(false), getPickupLocations)
+  .post(protect, authorize('admin', 'provider'), loadProvider(true), addPickupLocation); 
+router
+  .route('/:id')
+  .get(protect, getPickupLocation) 
+  .put(protect, authorize('admin', 'provider'), updatePickupLocation) 
+  .delete(protect, authorize('admin', 'provider'), deletePickupLocation);
 
 module.exports = router;
