@@ -5,6 +5,7 @@ const {
   addBooking,
   updateBooking,
   deleteBooking,
+  exportBookings,
 } = require('../controllers/bookings');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -16,7 +17,7 @@ const router = express.Router({ mergeParams: true });
 //Re-route: /bookings/:bookingId/pickup-request (Person B, req P3.6)
 router.use('/:bookingId/pickup-request', pickupRequestRouter);
 
-// TODO (Person B): GET /export (must be declared BEFORE /:id)   req A1
+router.get('/export', protect, exportBookings); //req A1
 
 router
   .route('/')
