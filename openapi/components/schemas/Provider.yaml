@@ -3,51 +3,19 @@ components:
   schemas:
     Provider:
       type: object
-      properties:
-        _id: { $ref: '#/components/schemas/ObjectId' }
-        name: { type: string, maxLength: 100, example: Bangkok Car Rental }
-        address: { type: string, example: 123 Sukhumvit Rd, Bangkok }
-        tel: { type: string, example: '021234567' }
-        owner: { $ref: '#/components/schemas/ObjectId' }
-        serviceRegions:
-          type: array
-          items: { type: string }
-          example: [Bangkok, Chonburi]
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    ProviderInput:
-      type: object
       required: [name, address, tel]
       properties:
-        name: { type: string, maxLength: 100, example: Bangkok Car Rental }
+        _id: { type: string, readOnly: true, example: 665f1c2ab3d4e5f6a7b8c9d1 }
+        name: { type: string, maxLength: 100, description: Unique, example: Bangkok Car Rental }
         address: { type: string, example: 123 Sukhumvit Rd, Bangkok }
         tel: { type: string, example: '021234567' }
+        owner:
+          type: string
+          description: User id of the provider account. Set automatically for a provider; admin passes it on create.
         serviceRegions:
           type: array
           items: { type: string }
-          description: Unique, valid province names. Only on create; use the /regions sub-routes afterwards.
-          example: [Bangkok]
-        owner:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
-          description: Admin only. A provider account always owns what it creates.
-    ProviderUpdateInput:
-      type: object
-      description: Only name / address / tel can change here.
-      properties:
-        name: { type: string, maxLength: 100 }
-        address: { type: string }
-        tel: { type: string }
-    ProviderResponse:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        data: { $ref: '#/components/schemas/Provider' }
-    ProviderList:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        count: { type: integer }
-        pagination: { $ref: '#/components/schemas/Pagination' }
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/Provider' }
+          description: Valid, unique province names. Set on create; change later with the /regions endpoints.
+          example: [Bangkok, Chonburi]
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }

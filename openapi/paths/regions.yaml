@@ -31,7 +31,7 @@ paths:
           description: Service regions
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RegionList' }
+              schema: { type: array, items: { type: string }, example: [Bangkok, Chonburi] }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -43,13 +43,13 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RegionsInput' }
+            schema: { type: object, required: [regions], properties: { regions: { type: array, items: { type: string }, example: [Bangkok, Chonburi] } } }
       responses:
         '200':
           description: Updated list
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RegionList' }
+              schema: { type: array, items: { type: string }, example: [Bangkok, Chonburi] }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -62,13 +62,13 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RegionsInput' }
+            schema: { type: object, required: [regions], properties: { regions: { type: array, items: { type: string }, example: [Bangkok, Chonburi] } } }
       responses:
         '200':
           description: Updated list
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RegionList' }
+              schema: { type: array, items: { type: string }, example: [Bangkok, Chonburi] }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -91,16 +91,10 @@ paths:
           description: Updated list
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RegionList' }
+              schema: { type: array, items: { type: string }, example: [Bangkok, Chonburi] }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
           description: Provider not found, or the region isn't one of its regions
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
         '409':
           description: Region still used by a pick-up location
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }

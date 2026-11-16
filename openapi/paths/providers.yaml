@@ -22,7 +22,7 @@ paths:
           description: Providers
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Provider' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
@@ -33,21 +33,18 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ProviderInput' }
+            schema: { $ref: '#/components/schemas/Provider' }
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderResponse' }
+              schema: { $ref: '#/components/schemas/Provider' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409':
           description: Name already taken, or this account already owns a provider
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /providers/export:
     get:
@@ -70,7 +67,7 @@ paths:
           description: Provider
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderResponse' }
+              schema: { $ref: '#/components/schemas/Provider' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -82,22 +79,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ProviderUpdateInput' }
+            schema: { $ref: '#/components/schemas/Provider' }
       responses:
         '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderResponse' }
+              schema: { $ref: '#/components/schemas/Provider' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Name already taken
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Providers]
       summary: Delete a provider

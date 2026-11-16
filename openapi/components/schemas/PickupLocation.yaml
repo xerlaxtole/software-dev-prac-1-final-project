@@ -3,41 +3,17 @@ components:
   schemas:
     PickupLocation:
       type: object
+      required: [name, address, region]
       properties:
-        _id: { $ref: '#/components/schemas/ObjectId' }
+        _id: { type: string, readOnly: true, example: 665f1c2ab3d4e5f6a7b8c9d3 }
         provider:
-          description: Provider id, or the populated provider on GET.
+          readOnly: true
+          description: Provider id (from the URL), or the populated provider on GET.
           oneOf:
-            - { $ref: '#/components/schemas/ObjectId' }
+            - { type: string }
             - { $ref: '#/components/schemas/Provider' }
         name: { type: string, description: Unique per provider, example: Siam Paragon }
         address: { type: string, example: 991 Rama I Rd, Pathum Wan, Bangkok }
-        region: { type: string, example: Bangkok }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    PickupLocationInput:
-      type: object
-      required: [name, address, region]
-      properties:
-        name: { type: string, example: Siam Paragon }
-        address: { type: string, example: 991 Rama I Rd, Pathum Wan, Bangkok }
-        region: { type: string, example: Bangkok }
-    PickupLocationUpdateInput:
-      type: object
-      properties:
-        name: { type: string }
-        address: { type: string }
-        region: { type: string }
-    PickupLocationResponse:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        data: { $ref: '#/components/schemas/PickupLocation' }
-    PickupLocationList:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        count: { type: integer }
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/PickupLocation' }
+        region: { type: string, description: One of the provider's service regions, example: Bangkok }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }

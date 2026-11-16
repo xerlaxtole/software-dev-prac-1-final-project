@@ -3,42 +3,20 @@ components:
   schemas:
     Car:
       type: object
+      required: [brand, model, licensePlate, dailyRate]
       properties:
-        _id: { $ref: '#/components/schemas/ObjectId' }
+        _id: { type: string, readOnly: true, example: 665f1c2ab3d4e5f6a7b8c9d2 }
         provider:
-          description: Provider id, or the populated provider (name, tel, serviceRegions…) on GET.
+          readOnly: true
+          description: Provider id (from the URL), or the populated provider on GET.
           oneOf:
-            - { $ref: '#/components/schemas/ObjectId' }
+            - { type: string }
             - { $ref: '#/components/schemas/Provider' }
         brand: { type: string, example: Toyota }
         model: { type: string, example: Camry }
-        licensePlate: { type: string, example: 1กข-1234 }
+        licensePlate: { type: string, description: Unique across all cars, example: 1กข-1234 }
         type: { type: string, enum: [sedan, suv, hatchback, van, pickup] }
         seats: { type: integer, minimum: 2, maximum: 15, example: 5 }
         dailyRate: { type: number, minimum: 0.01, example: 1500 }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    CarInput:
-      type: object
-      required: [brand, model, licensePlate, dailyRate]
-      properties:
-        brand: { type: string, example: Toyota }
-        model: { type: string, example: Camry }
-        licensePlate: { type: string, description: Unique across all cars (duplicate → 409), example: 1กข-1234 }
-        type: { type: string, enum: [sedan, suv, hatchback, van, pickup] }
-        seats: { type: integer, minimum: 2, maximum: 15, example: 5 }
-        dailyRate: { type: number, minimum: 0.01, example: 1500 }
-    CarResponse:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        data: { $ref: '#/components/schemas/Car' }
-    CarList:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        count: { type: integer }
-        pagination: { $ref: '#/components/schemas/Pagination' }
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/Car' }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }

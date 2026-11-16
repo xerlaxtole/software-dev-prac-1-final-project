@@ -10,13 +10,13 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RegisterInput' }
+            schema: { $ref: '#/components/schemas/User' }
       responses:
         '201':
           description: Registered
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TokenResponse' }
+              schema: { type: object, properties: { success: { type: boolean, example: true }, token: { type: string } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -29,23 +29,17 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LoginInput' }
+            schema: { type: object, required: [email, password], properties: { email: { type: string, example: somchai@example.com }, password: { type: string, example: '123456' } } }
       responses:
         '200':
           description: Logged in
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TokenResponse' }
+              schema: { type: object, properties: { success: { type: boolean, example: true }, token: { type: string } } }
         '400':
           description: Email or password missing
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
         '401':
           description: Invalid credentials
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /auth/logout:
     get:
@@ -79,6 +73,3 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409':
           description: Account still owns a provider
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }

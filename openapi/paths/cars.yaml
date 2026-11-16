@@ -12,7 +12,7 @@ paths:
           schema: { type: string, enum: [sedan, suv, hatchback, van, pickup] }
         - name: provider
           in: query
-          schema: { $ref: '#/components/schemas/ObjectId' }
+          schema: { type: string }
         - name: start
           in: query
           schema: { type: string, format: date }
@@ -26,7 +26,7 @@ paths:
           description: Cars
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CarList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Car' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
@@ -45,7 +45,7 @@ paths:
           description: Cars
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CarList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Car' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
@@ -56,22 +56,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CarInput' }
+            schema: { $ref: '#/components/schemas/Car' }
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CarResponse' }
+              schema: { $ref: '#/components/schemas/Car' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: licensePlate already exists
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /cars/{id}:
     parameters:
@@ -84,7 +81,7 @@ paths:
           description: Car
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CarResponse' }
+              schema: { $ref: '#/components/schemas/Car' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -96,22 +93,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CarInput' }
+            schema: { $ref: '#/components/schemas/Car' }
       responses:
         '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CarResponse' }
+              schema: { $ref: '#/components/schemas/Car' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: licensePlate already exists
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Cars]
       summary: Delete a car
@@ -124,6 +118,3 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Car has current or upcoming bookings
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }

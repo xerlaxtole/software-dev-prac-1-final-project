@@ -13,7 +13,7 @@ paths:
           description: Pick-up locations sorted by name
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupLocationList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/PickupLocation' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -25,26 +25,20 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PickupLocationInput' }
+            schema: { $ref: '#/components/schemas/PickupLocation' }
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+              schema: { $ref: '#/components/schemas/PickupLocation' }
         '400':
           description: Region outside the provider's service regions, or missing fields
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: This provider already has a location with that name
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /pickup-locations/{id}:
     parameters:
@@ -57,7 +51,7 @@ paths:
           description: Pick-up location
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+              schema: { $ref: '#/components/schemas/PickupLocation' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -69,22 +63,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PickupLocationUpdateInput' }
+            schema: { $ref: '#/components/schemas/PickupLocation' }
       responses:
         '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+              schema: { $ref: '#/components/schemas/PickupLocation' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Name already used by another location of this provider
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Pick-up locations]
       summary: Delete a pick-up location
@@ -97,6 +88,3 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Used by current or upcoming bookings
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }

@@ -56,7 +56,7 @@ const PORT = process.env.PORT || 5000;
 const swaggerDocs = swaggerJsDoc({
   swaggerDefinition: {
     openapi: '3.0.0',
-    info: { title: 'Rental Car Booking API', version: '1.0.0', description: 'Software Dev Prac 1 final project' },
+    info: { title: 'Rental Car Booking API', version: '1.0.0', description: 'Software Dev Prac 1 final project. Responses are wrapped as `{ success: true, data }` (lists also have `count`); errors are `{ success: false, message }`.' },
     servers: [{ url: `http://localhost:${PORT}/api/v1` }],
     security: [{ bearerAuth: [] }, { cookieAuth: [] }], 
     tags: [

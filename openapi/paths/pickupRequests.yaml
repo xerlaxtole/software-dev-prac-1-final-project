@@ -13,22 +13,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PickupRequestInput' }
+            schema: { $ref: '#/components/schemas/PickupRequest' }
       responses:
         '201':
           description: Created (status pending)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+              schema: { $ref: '#/components/schemas/PickupRequest' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Booking already has a pending or approved request
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
     get:
       tags: [Pick-up requests]
       summary: Get a booking's pick-up request
@@ -38,7 +35,7 @@ paths:
           description: Pick-up request
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+              schema: { $ref: '#/components/schemas/PickupRequest' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -55,9 +52,6 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Request is not pending
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /providers/{providerId}/pickup-requests:
     parameters:
@@ -75,7 +69,7 @@ paths:
           description: Pick-up requests
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupRequestList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/PickupRequest' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -93,22 +87,19 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApproveInput' }
+            schema: { type: object, properties: { addToList: { type: boolean, description: Also save the address as a pick-up location } } }
       responses:
         '200':
           description: Approved
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+              schema: { $ref: '#/components/schemas/PickupRequest' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Request is not pending, or a location with that name exists (addToList)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /pickup-requests/{id}/reject:
     parameters:
@@ -120,19 +111,16 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RejectInput' }
+            schema: { type: object, properties: { reviewNote: { type: string, example: Outside our service area } } }
       responses:
         '200':
           description: Rejected
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+              schema: { $ref: '#/components/schemas/PickupRequest' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Request is not pending
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }

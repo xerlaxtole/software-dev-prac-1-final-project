@@ -3,33 +3,21 @@ components:
   schemas:
     Booking:
       type: object
-      properties:
-        _id: { $ref: '#/components/schemas/ObjectId' }
-        user: { $ref: '#/components/schemas/ObjectId' }
-        car:
-          description: Car id, or the populated car (brand, model, licensePlate, dailyRate) on GET.
-          oneOf:
-            - { $ref: '#/components/schemas/ObjectId' }
-            - { $ref: '#/components/schemas/Car' }
-        provider:
-          description: Copied from the car. Id, or the populated provider (name, address, tel) on GET.
-          oneOf:
-            - { $ref: '#/components/schemas/ObjectId' }
-            - { $ref: '#/components/schemas/Provider' }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time, description: On or after startDate }
-        pickupLocation:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
-          nullable: true
-        pickupRequest:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
-          nullable: true
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    BookingInput:
-      type: object
       required: [startDate, endDate]
       properties:
+        _id: { type: string, readOnly: true, example: 665f1c2ab3d4e5f6a7b8c9d4 }
+        user: { type: string, readOnly: true, description: The logged-in user }
+        car:
+          description: Set from the URL on create; can be changed on update. Populated (brand, model…) on GET.
+          oneOf:
+            - { type: string }
+            - { $ref: '#/components/schemas/Car' }
+        provider:
+          readOnly: true
+          description: Copied from the car. Populated (name, address, tel) on GET.
+          oneOf:
+            - { type: string }
+            - { $ref: '#/components/schemas/Provider' }
         startDate:
           type: string
           format: date
@@ -37,33 +25,9 @@ components:
           example: '2026-12-20'
         endDate: { type: string, format: date, description: On or after startDate, example: '2026-12-23' }
         pickupLocation:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
-          description: Optional. Must be a pick-up location of the car's provider.
-    BookingUpdateInput:
-      type: object
-      properties:
-        startDate:
           type: string
-          format: date
-          description: If changed, must be today or later.
-        endDate: { type: string, format: date }
-        car:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
-          description: Move the booking to another car. A different provider clears pickupLocation and drops the pick-up request.
-        pickupLocation:
-          allOf: [{ $ref: '#/components/schemas/ObjectId' }]
           nullable: true
-          description: null / "" clears it. Picking one cancels a pending pick-up request.
-    BookingResponse:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        data: { $ref: '#/components/schemas/Booking' }
-    BookingList:
-      type: object
-      properties:
-        success: { type: boolean, example: true }
-        count: { type: integer }
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/Booking' }
+          description: Optional. A pick-up location of the car's provider.
+        pickupRequest: { type: string, nullable: true, readOnly: true }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }

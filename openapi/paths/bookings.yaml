@@ -20,18 +20,17 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BookingInput' }
+            schema: { $ref: '#/components/schemas/Booking' }
       responses:
         '201':
           description: Booked
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BookingResponse' }
+              schema: { $ref: '#/components/schemas/Booking' }
         '400':
           description: Invalid car id, 3-booking limit reached, invalid / reversed / past dates, or bad pickupLocation
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
               examples:
                 pastStart:
                   value: { success: false, message: startDate cannot be in the past }
@@ -44,9 +43,6 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Car is already booked for these dates
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 
   /bookings:
     get:
@@ -58,7 +54,7 @@ paths:
           description: Bookings
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BookingList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Booking' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -74,7 +70,7 @@ paths:
           description: Bookings
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BookingList' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Booking' } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -104,7 +100,7 @@ paths:
           description: Booking
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BookingResponse' }
+              schema: { $ref: '#/components/schemas/Booking' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -117,22 +113,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BookingUpdateInput' }
+            schema: { $ref: '#/components/schemas/Booking' }
       responses:
         '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BookingResponse' }
+              schema: { $ref: '#/components/schemas/Booking' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Car is already booked for these dates
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Bookings]
       summary: Delete a booking (and its pick-up request)
