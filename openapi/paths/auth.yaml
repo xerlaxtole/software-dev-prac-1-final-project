@@ -1,0 +1,84 @@
+# routes/auth.js
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a user or provider account
+      description: Sets the `token` cookie and returns the same JWT. Registering as `admin` is refused.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterInput' }
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInput' }
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '400':
+          description: Email or password missing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    get:
+      tags: [Auth]
+      summary: Log out (clears the cookie)
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the logged-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Auth]
+      summary: Delete own account
+      description: Also deletes the account's bookings and pick-up requests. A provider account must delete its provider first.
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Account still owns a provider
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

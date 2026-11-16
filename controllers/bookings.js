@@ -12,6 +12,12 @@ const populateBooking = [
   { path: 'provider', select: 'name address tel' },
 ];
 
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
 //Write access (update/delete): the booking's user or admin
 const isSelfOrAdmin = (booking, user) => user.role === 'admin' || booking.user.toString() === user.id;
 
@@ -126,8 +132,10 @@ exports.addBooking = async (req, res, next) => {
     if (isNaN(start) || isNaN(end) || start > end) {
       return res.status(400).json({ success: false, message: 'Invalid date range' });
     }
+    if (start < startOfToday()) {
+      return res.status(400).json({ success: false, message: 'startDate cannot be in the past' });
+    }
 
-    //Optional: without one, pick-up falls back to a pick-up request or the provider's address
     if (pickupLocation) {
       if (!mongoose.isValidObjectId(pickupLocation)) {
         return res.status(400).json({ success: false, message: 'Invalid pickupLocation id' });
@@ -180,6 +188,9 @@ exports.updateBooking = async (req, res, next) => {
     const end = new Date(body.endDate ?? booking.endDate);
     if (isNaN(start) || isNaN(end) || start > end) {
       return res.status(400).json({ success: false, message: 'Invalid date range' });
+    }
+    if (start.getTime() !== booking.startDate.getTime() && start < startOfToday()) {
+      return res.status(400).json({ success: false, message: 'startDate cannot be in the past' });
     }
 
     let car = null;

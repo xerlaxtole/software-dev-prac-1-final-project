@@ -1,0 +1,37 @@
+# models/User.js
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        name: { type: string, example: Somchai Jaidee }
+        tel: { type: string, pattern: '^0[0-9]{8,9}$', example: '0812345678' }
+        email: { type: string, format: email, example: somchai@example.com }
+        role: { type: string, enum: [user, provider, admin], example: user }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RegisterInput:
+      type: object
+      required: [name, tel, email, password]
+      properties:
+        name: { type: string, example: Somchai Jaidee }
+        tel: { type: string, pattern: '^0[0-9]{8,9}$', example: '0812345678' }
+        email: { type: string, format: email, example: somchai@example.com }
+        password: { type: string, format: password, minLength: 6, example: '123456' }
+        role:
+          type: string
+          enum: [user, provider]
+          default: user
+          description: '`admin` → 403 (admins come from `npm run seed`).'
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: somchai@example.com }
+        password: { type: string, format: password, example: '123456' }
+    TokenResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }

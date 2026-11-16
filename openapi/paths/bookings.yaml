@@ -1,0 +1,145 @@
+# routes/bookings.js → controllers/bookings.js (mounted at /bookings, /cars/{carId}/bookings, /providers/{providerId}/bookings)
+paths:
+  /cars/{carId}/bookings:
+    parameters:
+      - $ref: '#/components/parameters/CarId'
+    post:
+      tags: [Bookings]
+      summary: Book a car
+      description: |
+        Roles: user only (provider / admin → 403). The provider is copied from the car.
+
+        Checks, in order:
+        1. carId is a valid id (400) and the car exists (404)
+        2. the user has fewer than 3 bookings (400)
+        3. startDate and endDate are valid dates and endDate ≥ startDate (400 `Invalid date range`)
+        4. startDate is today or later (400 `startDate cannot be in the past`)
+        5. pickupLocation, if given, is a valid id belonging to the car's provider (400)
+        6. no other booking of this car overlaps the dates, inclusive (409)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingInput' }
+      responses:
+        '201':
+          description: Booked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingResponse' }
+        '400':
+          description: Invalid car id, 3-booking limit reached, invalid / reversed / past dates, or bad pickupLocation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                pastStart:
+                  value: { success: false, message: startDate cannot be in the past }
+                badRange:
+                  value: { success: false, message: Invalid date range }
+                limit:
+                  value: { success: false, message: The user with ID 665f1c2ab3d4e5f6a7b8c9d0 has already made 3 bookings }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Car is already booked for these dates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings
+      description: 'user: own bookings · provider: its provider''s bookings · admin: all.'
+      responses:
+        '200':
+          description: Bookings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /providers/{providerId}/bookings:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+    get:
+      tags: [Bookings]
+      summary: List a provider's bookings
+      description: 'user: own bookings with this provider · provider: only its own provider (else 403) · admin: all.'
+      responses:
+        '200':
+          description: Bookings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings/export:
+    get:
+      tags: [Bookings]
+      summary: Download bookings as CSV
+      description: |
+        Same scope as GET /bookings. Columns: bookingId, startDate, endDate, carBrand, carModel, licensePlate,
+        providerName, providerTel, pickupName, pickupAddress, createdAt.
+      responses:
+        '200': { $ref: '#/components/responses/Csv' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /bookings/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Bookings]
+      summary: Get one booking
+      description: The booking's user, the owner of its provider, or admin.
+      responses:
+        '200':
+          description: Booking
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Bookings]
+      summary: Update a booking
+      description: 'Roles: the booking''s user, admin. Same date rules as create (a changed startDate must be today or later) and the same overlap check.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingUpdateInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Car is already booked for these dates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Bookings]
+      summary: Delete a booking (and its pick-up request)
+      description: 'Roles: the booking''s user, admin.'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }

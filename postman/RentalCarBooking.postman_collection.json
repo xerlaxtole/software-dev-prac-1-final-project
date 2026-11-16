@@ -78,6 +78,14 @@
     {
       "key": "endDate",
       "value": ""
+    },
+    {
+      "key": "badStartDate",
+      "value": ""
+    },
+    {
+      "key": "badEndDate",
+      "value": ""
     }
   ],
   "item": [
@@ -1977,6 +1985,258 @@
                 "exec": [
                   "pm.test('Status is 201', () => pm.response.to.have.status(201));",
                   "if (pm.response.code < 300) { pm.collectionVariables.set('bookingId', pm.response.json().data._id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking with start date in the past (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cars/{{carId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cars",
+                "{{carId}}",
+                "bookings"
+              ]
+            },
+            "description": "startDate before today is rejected (today itself is allowed).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"{{badStartDate}}\",\n  \"endDate\": \"{{badEndDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('badStartDate', d(-3));",
+                  "pm.collectionVariables.set('badEndDate', d(-1));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Message is \"startDate cannot be in the past\"', () => pm.expect(pm.response.json().message).to.eql('startDate cannot be in the past'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking end before start (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cars/{{carId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cars",
+                "{{carId}}",
+                "bookings"
+              ]
+            },
+            "description": "endDate must be on or after startDate.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"{{badStartDate}}\",\n  \"endDate\": \"{{badEndDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('badStartDate', d(20));",
+                  "pm.collectionVariables.set('badEndDate', d(18));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Message is \"Invalid date range\"', () => pm.expect(pm.response.json().message).to.eql('Invalid date range'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking invalid date format (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cars/{{carId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cars",
+                "{{carId}}",
+                "bookings"
+              ]
+            },
+            "description": "startDate is not a parseable date.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"not-a-date\",\n  \"endDate\": \"{{badEndDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('badEndDate', d(20));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Message is \"Invalid date range\"', () => pm.expect(pm.response.json().message).to.eql('Invalid date range'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking missing body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cars/{{carId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cars",
+                "{{carId}}",
+                "bookings"
+              ]
+            },
+            "description": "No startDate / endDate in the body.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Message is \"Invalid date range\"', () => pm.expect(pm.response.json().message).to.eql('Invalid date range'));"
                 ]
               }
             }

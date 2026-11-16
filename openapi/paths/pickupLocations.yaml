@@ -1,0 +1,102 @@
+# routes/pickupLocations.js → controllers/pickupLocations.js
+paths:
+  /providers/{providerId}/pickup-locations:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+    get:
+      tags: [Pick-up locations]
+      summary: List a provider's pick-up locations
+      parameters:
+        - $ref: '#/components/parameters/Region'
+      responses:
+        '200':
+          description: Pick-up locations sorted by name
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupLocationList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Pick-up locations]
+      summary: Add a pick-up location
+      description: "Roles: provider owner, admin. region must be one of the provider's service regions."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickupLocationInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+        '400':
+          description: Region outside the provider's service regions, or missing fields
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: This provider already has a location with that name
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /pickup-locations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Pick-up locations]
+      summary: Get one pick-up location (with its provider)
+      responses:
+        '200':
+          description: Pick-up location
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Pick-up locations]
+      summary: Update a pick-up location
+      description: 'Roles: provider owner, admin.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickupLocationUpdateInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupLocationResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Name already used by another location of this provider
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Pick-up locations]
+      summary: Delete a pick-up location
+      description: 'Roles: provider owner, admin. Refused while a current or upcoming booking uses it; past bookings fall back to null.'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Used by current or upcoming bookings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

@@ -1,0 +1,138 @@
+# routes/pickupRequests.js → controllers/pickupRequests.js
+paths:
+  /bookings/{bookingId}/pickup-request:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [Pick-up requests]
+      summary: Request a custom pick-up address for a booking
+      description: |
+        Roles: the booking's user. One request per booking: a pending or approved one → 409,
+        a rejected one is replaced. Refused once the booking has ended (400).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickupRequestInput' }
+      responses:
+        '201':
+          description: Created (status pending)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Booking already has a pending or approved request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    get:
+      tags: [Pick-up requests]
+      summary: Get a booking's pick-up request
+      description: The booking's user, the owner of its provider, or admin.
+      responses:
+        '200':
+          description: Pick-up request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Pick-up requests]
+      summary: Cancel a pending pick-up request
+      description: "Roles: the booking's user. Only a pending request can be cancelled (else 409)."
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Request is not pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /providers/{providerId}/pickup-requests:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+    get:
+      tags: [Pick-up requests]
+      summary: List a provider's pick-up requests
+      description: 'Roles: provider owner, admin. Oldest first.'
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected], default: pending }
+      responses:
+        '200':
+          description: Pick-up requests
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /pickup-requests/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Pick-up requests]
+      summary: Approve a pending pick-up request
+      description: |
+        Roles: provider owner, admin. The approved address replaces the booking's pickupLocation.
+        `addToList: true` also saves it as a pick-up location (its region must be served, its name free).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveInput' }
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Request is not pending, or a location with that name exists (addToList)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /pickup-requests/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Pick-up requests]
+      summary: Reject a pending pick-up request
+      description: 'Roles: provider owner, admin. The user can then send a new request.'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectInput' }
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Request is not pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

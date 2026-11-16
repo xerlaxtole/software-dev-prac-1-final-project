@@ -1,0 +1,129 @@
+# routes/cars.js → controllers/cars.js (also mounted at /providers/{providerId}/cars)
+paths:
+  /cars:
+    get:
+      tags: [Cars]
+      summary: Search cars
+      description: Sorted by dailyRate. `start` + `end` keep only cars with no booking overlapping that range (inclusive).
+      parameters:
+        - $ref: '#/components/parameters/Region'
+        - name: type
+          in: query
+          schema: { type: string, enum: [sedan, suv, hatchback, van, pickup] }
+        - name: provider
+          in: query
+          schema: { $ref: '#/components/schemas/ObjectId' }
+        - name: start
+          in: query
+          schema: { type: string, format: date }
+        - name: end
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cars
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /providers/{providerId}/cars:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+    get:
+      tags: [Cars]
+      summary: List a provider's cars
+      description: Accepts the same query parameters as GET /cars.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cars
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Cars]
+      summary: Add a car to a provider
+      description: 'Roles: provider owner, admin.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CarInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: licensePlate already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /cars/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cars]
+      summary: Get one car (with its provider)
+      responses:
+        '200':
+          description: Car
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Cars]
+      summary: Update a car
+      description: 'Roles: provider owner, admin. The provider cannot be changed.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CarInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: licensePlate already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Cars]
+      summary: Delete a car
+      description: 'Roles: provider owner, admin. Refused while the car has a current or upcoming booking; past bookings are deleted with it.'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Car has current or upcoming bookings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

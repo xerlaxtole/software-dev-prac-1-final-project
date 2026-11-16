@@ -1,0 +1,120 @@
+# Shared pieces used by every paths/*.yaml file: auth, error shape, path/query params, standard error responses.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token from POST /auth/register or POST /auth/login.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: httpOnly cookie set by register / login (same JWT).
+
+  schemas:
+    ObjectId:
+      type: string
+      pattern: '^[a-f0-9]{24}$'
+      example: 665f1c2ab3d4e5f6a7b8c9d0
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string, example: Not authorized to access this route }
+    EmptyData:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data: { type: object, example: {} }
+    Pagination:
+      type: object
+      description: Present only when there is a next / previous page.
+      properties:
+        next:
+          type: object
+          properties:
+            page: { type: integer, example: 2 }
+            limit: { type: integer, example: 25 }
+        prev:
+          type: object
+          properties:
+            page: { type: integer, example: 1 }
+            limit: { type: integer, example: 25 }
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+    ProviderId:
+      name: providerId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+    CarId:
+      name: carId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ObjectId' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, default: 25 }
+    Region:
+      name: region
+      in: query
+      description: English province name from GET /regions (unknown name → 400).
+      schema: { type: string, example: Bangkok }
+
+  responses:
+    BadRequest:
+      description: Invalid id, body or query
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing, invalid or expired token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Role not allowed, or not the owner of this resource
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflicts with existing data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Deleted:
+      description: Deleted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EmptyData' }
+    Csv:
+      description: CSV file download (Content-Disposition attachment)
+      content:
+        text/csv:
+          schema: { type: string }

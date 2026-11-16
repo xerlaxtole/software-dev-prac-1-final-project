@@ -1,0 +1,106 @@
+# routes/regions.js + provider service regions (routes/providers.js → controllers/regions.js)
+paths:
+  /regions:
+    get:
+      tags: [Regions]
+      summary: List the 77 Thai provinces
+      security: []
+      responses:
+        '200':
+          description: Provinces sorted by name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  count: { type: integer, example: 77 }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Region' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /providers/{providerId}/regions:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+    get:
+      tags: [Provider service regions]
+      summary: Get a provider's service regions
+      responses:
+        '200':
+          description: Service regions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Provider service regions]
+      summary: Add service regions
+      description: 'Roles: provider owner, admin. Merges with the current list; an empty list or unknown province → 400.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegionsInput' }
+      responses:
+        '200':
+          description: Updated list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Provider service regions]
+      summary: Replace all service regions
+      description: 'Roles: provider owner, admin. An empty list is allowed. Dropping a region still used by a pick-up location → 409.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegionsInput' }
+      responses:
+        '200':
+          description: Updated list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /providers/{providerId}/regions/{region}:
+    parameters:
+      - $ref: '#/components/parameters/ProviderId'
+      - name: region
+        in: path
+        required: true
+        schema: { type: string, example: Phuket }
+    delete:
+      tags: [Provider service regions]
+      summary: Remove one service region
+      description: 'Roles: provider owner, admin.'
+      responses:
+        '200':
+          description: Updated list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Provider not found, or the region isn't one of its regions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Region still used by a pick-up location
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

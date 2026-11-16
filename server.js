@@ -58,8 +58,13 @@ const swaggerDocs = swaggerJsDoc({
     openapi: '3.0.0',
     info: { title: 'Rental Car Booking API', version: '1.0.0', description: 'Software Dev Prac 1 final project' },
     servers: [{ url: `http://localhost:${PORT}/api/v1` }],
+    security: [{ bearerAuth: [] }, { cookieAuth: [] }], 
+    tags: [
+      'Health', 'Auth', 'Regions', 'Providers', 'Provider service regions',
+      'Cars', 'Pick-up locations', 'Bookings', 'Pick-up requests',
+    ].map((name) => ({ name })),
   },
-  apis: ['./routes/*.js'],
+  apis: ['./openapi/**/*.yaml'],
 });
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs));
 

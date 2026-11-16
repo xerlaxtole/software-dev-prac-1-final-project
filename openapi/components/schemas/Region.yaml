@@ -1,0 +1,25 @@
+# models/Region.js — seeded master list of the 77 Thai provinces
+components:
+  schemas:
+    Region:
+      type: object
+      properties:
+        name: { type: string, example: Bangkok }
+        nameTh: { type: string, example: กรุงเทพมหานคร }
+    RegionsInput:
+      type: object
+      required: [regions]
+      properties:
+        regions:
+          type: array
+          items: { type: string }
+          example: [Bangkok, Chonburi]
+    RegionList:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        count: { type: integer, example: 2 }
+        data:
+          type: array
+          items: { type: string }
+          example: [Bangkok, Chonburi]

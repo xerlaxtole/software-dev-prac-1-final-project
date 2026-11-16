@@ -1,0 +1,56 @@
+# models/PickupRequest.js — one per booking; a rejected one is replaced by the next request
+components:
+  schemas:
+    PickupRequest:
+      type: object
+      properties:
+        _id: { $ref: '#/components/schemas/ObjectId' }
+        booking:
+          description: Booking id, or the populated booking (startDate, endDate, car) when listed by provider.
+          oneOf:
+            - { $ref: '#/components/schemas/ObjectId' }
+            - { $ref: '#/components/schemas/Booking' }
+        user:
+          description: User id, or the populated user (name, tel, email) when listed by provider.
+          oneOf:
+            - { $ref: '#/components/schemas/ObjectId' }
+            - { $ref: '#/components/schemas/User' }
+        provider: { $ref: '#/components/schemas/ObjectId' }
+        name: { type: string, example: My condo }
+        address: { type: string, example: 88 Phahonyothin Rd, Bangkok }
+        region: { type: string, example: Bangkok }
+        status: { type: string, enum: [pending, approved, rejected], default: pending }
+        reviewNote: { type: string }
+        reviewedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PickupRequestInput:
+      type: object
+      required: [name, address]
+      properties:
+        name: { type: string, example: My condo }
+        address: { type: string, example: 88 Phahonyothin Rd, Bangkok }
+        region: { type: string, description: Optional. Must be one of the provider's service regions., example: Bangkok }
+    ApproveInput:
+      type: object
+      properties:
+        addToList:
+          type: boolean
+          description: true also saves the address as one of the provider's pick-up locations (needs a region it serves and a free name).
+    RejectInput:
+      type: object
+      properties:
+        reviewNote: { type: string, example: We don't deliver to that area }
+    PickupRequestResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data: { $ref: '#/components/schemas/PickupRequest' }
+    PickupRequestList:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        count: { type: integer }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PickupRequest' }

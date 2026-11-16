@@ -1,0 +1,110 @@
+# routes/providers.js → controllers/providers.js
+paths:
+  /providers:
+    get:
+      tags: [Providers]
+      summary: List providers
+      description: |
+        Advanced query: any field filter with `[gt] [gte] [lt] [lte] [in]` (e.g. `?name[in]=A,B`),
+        `?region=` (providers serving that province), `?select=name,tel`, `?sort=name,-createdAt` (default `-createdAt`), paging.
+      parameters:
+        - $ref: '#/components/parameters/Region'
+        - name: select
+          in: query
+          schema: { type: string, example: 'name,tel,serviceRegions' }
+        - name: sort
+          in: query
+          schema: { type: string, example: name }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Providers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Providers]
+      summary: Create a provider
+      description: 'Roles: provider, admin. A provider account can own one provider (second → 409) and always becomes its owner; admin must pass `owner`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProviderInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Name already taken, or this account already owns a provider
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /providers/export:
+    get:
+      tags: [Providers]
+      summary: Download all providers as CSV
+      description: 'Columns: name, address, tel, serviceRegions.'
+      responses:
+        '200': { $ref: '#/components/responses/Csv' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /providers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Providers]
+      summary: Get one provider
+      responses:
+        '200':
+          description: Provider
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Providers]
+      summary: Update name / address / tel
+      description: 'Roles: provider owner, admin. owner and serviceRegions are ignored here.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProviderUpdateInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Name already taken
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Providers]
+      summary: Delete a provider
+      description: 'Roles: provider owner, admin. Also deletes its cars, pick-up locations, pick-up requests and bookings.'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
